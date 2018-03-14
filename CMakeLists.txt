@@ -5,6 +5,13 @@ set(CMAKE_CXX_STANDARD 11)
 SET(PROJECT_WX melonDS)
 PROJECT(${PROJECT_WX})
 
+macro(_target_link_options_private _target)
+	foreach(_opt IN LISTS ${ARGN})
+		set_property(TARGET ${_target} APPEND_STRING PROPERTY
+			LINK_FLAGS " ${_opt}")
+	endforeach()
+endmacro()
+
 SET(SOURCES
 	src/libui_sdl/main.cpp
 	src/libui_sdl/Platform.cpp
@@ -37,6 +44,11 @@ SET(SOURCES
 	src/libui_sdl/libui/common/userbugs.c
 )
 
+if (UNIX OR NOT MSVC)
+    FIND_PACKAGE(PkgConfig REQUIRED)
+    PKG_CHECK_MODULES(GLIB2 REQUIRED glib-2.0)
+    INCLUDE_DIRECTORIES(${GLIB2_INCLUDE_DIRS})
+endif()
 if (UNIX)
     LIST(APPEND SOURCES
         src/libui_sdl/libui/unix/alloc.c
@@ -81,7 +93,7 @@ if (UNIX)
         melon_grc.c
     )
 
-    FIND_PACKAGE(PkgConfig REQUIRED)
+    
     PKG_CHECK_MODULES(GTK3 REQUIRED gtk+-3.0)
 
     INCLUDE_DIRECTORIES(${GTK3_INCLUDE_DIRS})
@@ -162,24 +174,45 @@ elseif (WIN32)
     LINK_LIBRARIES("dwrite")
     LINK_LIBRARIES("usp10")
     LINK_LIBRARIES("ws2_32")
+    if (MSVC)
+        add_definitions(/DWIN32_LEAN_AND_MEAN)
+        # Silence "deprecation" warnings
+        add_definitions(/D_CRT_SECURE_NO_WARNINGS /D_CRT_NONSTDC_NO_DEPRECATE /D_SCL_SECURE_NO_WARNINGS)
+    endif()
 endif (UNIX)
 
-find_package(SDL2 REQUIRED)
+# On Windows you may want to manually set SDL2_INCLUDE_DIR and SDL2_LIBRARIES.
+if (NOT DEFINED SDL2_INCLUDE_DIR AND NOT DEFINED SDL2_LIBRARIES)
+    find_package(SDL2 REQUIRED)
+endif()
+message(STATUS ${SDL2_INCLUDE_DIR})
+message(STATUS ${SDL2_LIBRARIES})
 include_directories(${SDL2_INCLUDE_DIR})
+include_directories(src/)
 link_libraries(${SDL2_LIBRARIES})
-
-add_executable(${PROJECT_WX} ${SOURCES})
+if(MSVC)
+    add_executable(${PROJECT_WX} WIN32 ${SOURCES})
+else()
+    add_executable(${PROJECT_WX} ${SOURCES})
+endif()
 target_link_libraries(${PROJECT_WX})
-
+if (MSVC)
+_target_link_options_private(${PROJECT_WX} 		/LARGEADDRESSAWARE
+/NOLOGO
+/INCREMENTAL:NO
+/MANIFEST:NO)
+endif()
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W4 /wd4100 /bigobj /nologo /EHsc")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /W4 /wd4100 /bigobj /nologo /EHsc")
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
 if(CMAKE_BUILD_TYPE EQUAL Debug)
-set(CMAKE_CXX_FLAGS "-g")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
 endif()
 if(CMAKE_BUILD_TYPE EQUAL Release)
-set(CMAKE_CXX_FLAGS "-O3 -flto")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -flto")
 endif()
 
 install(TARGETS ${PROJECT_WX} RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)

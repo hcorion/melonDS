@@ -1,0 +1,56 @@
+version: 1.0.{build}
+
+image: Visual Studio 2017
+
+clone_folder: c:\melonDS
+
+platform: x64
+
+configuration: Release
+
+environment:
+  # Tell msys2 to add mingw64 to the path
+  MSYSTEM: MINGW64
+  # Tell msys2 to inherit the current directory when starting the shell
+  CHERE_INVOKING: 1
+  matrix:
+    - COMPILER: MSVC
+    - COMPILER: MinGW
+
+before_build:
+  - ps: |
+        Invoke-WebRequest https://www.libsdl.org/release/SDL2-devel-2.0.8-VC.zip -OutFile SDL2.zip
+        7z x SDL2.zip
+        dir ./
+        cd SDL2-2.0.8/include
+        mkdir SDL2
+        cd ../../
+        cp ./SDL2-2.0.8/include/*.h ./SDL2-2.0.8/include/SDL2/
+        dir ./SDL2-2.0.8/include/
+        dir ./SDL2-2.0.8/include/SDL2/
+        C:\msys64\usr\bin\bash -lc "pacman --noconfirm -S mingw64/mingw-w64-x86_64-glib2"
+build_script:
+  - ps: |
+        dir C:\mingw-w64\x86_64-7.2.0-posix-seh-rt_v5-rev1\mingw64
+        dir C:\mingw-w64\x86_64-7.2.0-posix-seh-rt_v5-rev1\mingw64\bin
+        mkdir build
+        cd build
+        if ($env:COMPILER -eq 'MinGW') {
+          C:\msys64\usr\bin\bash.exe -lc --% 'cmake -G "MSYS Makefiles" ../ -DCMAKE_BUILD_TYPE=Release -DSDL2_INCLUDE_DIR=C:/melonDS/SDL2-2.0.8/include/ -DSDL2_LIBRARIES=C:/melonDS/SDL2-2.0.8/lib/x64/SDL2.lib'
+          C:\msys64\usr\bin\bash.exe -lc 'mingw32-make'
+        } else {
+          & cmake -G "Visual Studio 15 2017 Win64" ../ -DCMAKE_BUILD_TYPE=Release -DSDL2_INCLUDE_DIR=C:\melonDS\SDL2-2.0.8\include\ -DSDL2_LIBRARIES="C:/melonDS/SDL2-2.0.8/lib/x64/SDL2.lib;C:/melonDS/SDL2-2.0.8/lib/x64/SDL2main.lib"
+          msbuild melonDS.sln /maxcpucount /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
+        }
+        dir .
+        dir ./Release
+        dir ./x64/Release
+        if ($env:COMPILER -eq 'MinGW') {
+        } else {
+          7z a C:\melonDS\build\melonDS.zip C:\melonDS\build\Release\melonDS.exe
+          $env:BUILD_EXE = C:\melonDS\build\Release\melonDS.exe
+        }
+
+artifacts:
+  - path: build\melonDS.zip
+    name: melonDS

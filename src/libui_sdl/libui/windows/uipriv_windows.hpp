@@ -1,5 +1,9 @@
 // 21 april 2016
 #include "winapi.hpp"
+#ifdef _MSC_VER
+#include <windows.h>
+#include <ShlObj.h>
+#endif
 #include "../ui.h"
 #include "../ui_windows.h"
 #include "../common/uipriv.h"

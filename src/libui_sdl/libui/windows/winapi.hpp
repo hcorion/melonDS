@@ -24,6 +24,7 @@
 #define NTDDI_VERSION		0x06000000
 
 #include <windows.h>
+#include <ShlObj.h>
 
 // Microsoft's resource compiler will segfault if we feed it headers it was not designed to handle
 #ifndef RC_INVOKED
