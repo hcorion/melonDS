@@ -15,15 +15,17 @@
     You should have received a copy of the GNU General Public License along
     with melonDS. If not, see http://www.gnu.org/licenses/.
 */
-
+#ifdef _WIN32
+#include <windows.h>
+#include <ShlObj.h>
+#else
+#include <glib.h>
+#endif
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include "Config.h"
 #include <string>
-#ifndef _WIN32
-#include <glib.h>
-#endif
 
 
 namespace Config
@@ -115,12 +117,13 @@ FILE* GetConfigFile(const char* fileName, const char* permissions)
     if (f) return f;
 #ifdef _WIN32
     // Now check AppData
-    PWSTR appDataPath = NULL;
-    SHGetKnownFolderPath(FOLDERID_RoamingAppData, 0, NULL, &appDataPath);
-    if (!appDataPath)
+    LPSTR appDataPathWindows;
+    SHGetFolderPathA(NULL, CSIDL_LOCAL_APPDATA, NULL, 0, appDataPathWindows);
+    std::string appDataPath = appDataPathWindows;
+    if (appDataPath.empty())
         return NULL;
-    std::string path = std::string(appDataPath) + "\\melonds\\" + fileName;
-    f = fopen(path, permissions);
+    std::string path = appDataPath + "\\melonds\\" + fileName;
+    f = fopen(path.c_str(), permissions);
     if (f) return f;
 #else
     // Now check XDG_CONFIG_HOME

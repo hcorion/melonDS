@@ -1,4 +1,5 @@
 // 6 april 2015
+#include "winapi.hpp"
 #include "uipriv_windows.hpp"
 
 HINSTANCE hInstance;

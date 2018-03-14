@@ -37,6 +37,10 @@ SET(SOURCES
 	src/libui_sdl/libui/common/userbugs.c
 )
 
+if (APPLE)
+    # gettext isn't symlinked by default on MacOS brew, so we just manually specify where to find it.
+    LINK_DIRECTORIES("/usr/local/opt/gettext/lib" "/opt/local/lib")
+endif()
 if (UNIX)
     LIST(APPEND SOURCES
         src/libui_sdl/libui/unix/alloc.c
@@ -82,10 +86,14 @@ if (UNIX)
     )
 
     FIND_PACKAGE(PkgConfig REQUIRED)
-    PKG_CHECK_MODULES(GTK3 REQUIRED gtk+-3.0)
 
+    PKG_CHECK_MODULES(GTK3 REQUIRED gtk+-3.0)
     INCLUDE_DIRECTORIES(${GTK3_INCLUDE_DIRS})
     LINK_LIBRARIES(${GTK3_LIBRARIES})
+
+    PKG_CHECK_MODULES(GLIB2 REQUIRED glib-2.0)
+    INCLUDE_DIRECTORIES(${GLIB2_INCLUDE_DIRS})
+    LINK_LIBRARIES(${GLIB2_LIBRARIES})
 
     ADD_DEFINITIONS(${GTK3_CFLAGS_OTHER})
     
@@ -164,22 +172,31 @@ elseif (WIN32)
     LINK_LIBRARIES("ws2_32")
 endif (UNIX)
 
-find_package(SDL2 REQUIRED)
+# On Windows you may want to manually set SDL2_INCLUDE_DIR and SDL2_LIBRARIES.
+if (NOT DEFINED SDL2_INCLUDE_DIR AND NOT DEFINED SDL2_LIBRARIES)
+    find_package(SDL2 REQUIRED)
+endif()
+message(STATUS ${SDL2_INCLUDE_DIR})
+message(STATUS ${SDL2_LIBRARIES})
 include_directories(${SDL2_INCLUDE_DIR})
+# For pcap headers
+include_directories(src/)
 link_libraries(${SDL2_LIBRARIES})
-
-add_executable(${PROJECT_WX} ${SOURCES})
+if(MSVC)
+    add_executable(${PROJECT_WX} WIN32 ${SOURCES})
+else()
+    add_executable(${PROJECT_WX} ${SOURCES})
+endif()
 target_link_libraries(${PROJECT_WX})
-
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
 if(CMAKE_BUILD_TYPE EQUAL Debug)
-set(CMAKE_CXX_FLAGS "-g")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
 endif()
 if(CMAKE_BUILD_TYPE EQUAL Release)
-set(CMAKE_CXX_FLAGS "-O3 -flto")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -flto")
 endif()
 
 install(TARGETS ${PROJECT_WX} RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)

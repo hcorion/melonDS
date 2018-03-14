@@ -1,4 +1,5 @@
 // 16 may 2016
+#include "winapi.hpp"
 #include "uipriv_windows.hpp"
 
 // TODO should the d2dscratch programs capture mouse?

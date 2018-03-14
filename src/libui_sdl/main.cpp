@@ -19,7 +19,13 @@
 #include <stdlib.h>
 #include <time.h>
 #include <stdio.h>
-
+#ifdef _MSC_VER 
+#define strncasecmp _strnicmp
+#define strcasecmp _stricmp
+#include <string.h>
+#else
+#include <strings.h>
+#endif
 #include <SDL2/SDL.h>
 #include "libui/ui.h"
 

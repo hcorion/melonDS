@@ -1,0 +1,58 @@
+version: 1.0.{build}
+
+image: Visual Studio 2017
+
+clone_folder: c:\melonDS
+
+platform: x64
+
+configuration: Release
+
+environment:
+  # Tell msys2 to add mingw64 to the path
+  MSYSTEM: MINGW64
+  # Tell msys2 to inherit the current directory when starting the shell
+  CHERE_INVOKING: 1
+  matrix:
+    - COMPILER: MSVC
+    - COMPILER: MinGW
+
+before_build:
+  - ps: |
+        Invoke-WebRequest https://www.libsdl.org/release/SDL2-devel-2.0.8-VC.zip -OutFile SDL2.zip
+        7z x SDL2.zip
+        dir ./
+        cd SDL2-2.0.8/include
+        mkdir SDL2
+        cd ../../
+        cp ./SDL2-2.0.8/include/*.h ./SDL2-2.0.8/include/SDL2/
+build_script:
+  - ps: |
+        mkdir build
+        cd build
+        if ($env:COMPILER -eq 'MinGW') {
+          C:\msys64\usr\bin\bash.exe -lc --% 'cmake -G "MSYS Makefiles" ../ -DCMAKE_BUILD_TYPE=Release -DSDL2_INCLUDE_DIR=C:/melonDS/SDL2-2.0.8/include/ -DSDL2_LIBRARIES=C:/melonDS/SDL2-2.0.8/lib/x64/SDL2.lib 2>&1'
+          C:\msys64\usr\bin\bash.exe -lc 'mingw32-make 2>&1'
+        } else {
+          cmake -G "Visual Studio 15 2017 Win64" ../ -DCMAKE_BUILD_TYPE=Release -DSDL2_INCLUDE_DIR=C:\melonDS\SDL2-2.0.8\include\ -DSDL2_LIBRARIES="C:/melonDS/SDL2-2.0.8/lib/x64/SDL2.lib"
+          msbuild melonDS.sln /maxcpucount /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
+        }
+
+after_build:
+  - ps: |
+        $GITDATE = $(git show -s --date=short --format='%ad') -replace "-",""
+        $GITREV = $(git show -s --format='%h')
+        if ($env:COMPILER -eq 'MinGW') {
+          $MINGW_BUILD_ZIP = "melonDS-mingw-$GITDATE-$GITREV.zip" -replace " ", ""
+          $env:BUILD_ZIP = $MINGW_BUILD_ZIP
+          $MingwDLLs = "C:\msys64\mingw64\bin\libwinpthread-1.dll C:\msys64\mingw64\bin\libgcc_s_seh-1.dll C:\msys64\mingw64\bin\libstdc++-6.dll"
+          7z a ../$MINGW_BUILD_ZIP C:\melonDS\build\melonDS.exe C:\melonDS\SDL2-2.0.8\lib\x64\SDL2.dll C:\msys64\mingw64\bin\libwinpthread-1.dll C:\msys64\mingw64\bin\libgcc_s_seh-1.dll C:\msys64\mingw64\bin\libstdc++-6.dll
+        } else {
+          $MSVC_BUILD_ZIP = "melonDS-msvc-$GITDATE-$GITREV.zip" -replace " ", ""
+          $env:BUILD_ZIP = $MSVC_BUILD_ZIP
+          7z a ../$MSVC_BUILD_ZIP C:\melonDS\build\Release\melonDS.exe C:\melonDS\SDL2-2.0.8\lib\x64\SDL2.dll
+        }
+artifacts:
+  - path: $(BUILD_ZIP)
+    name: build
+    type: zip

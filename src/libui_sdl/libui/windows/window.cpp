@@ -1,6 +1,11 @@
 // 27 april 2015
+#ifdef _MSC_VER
+#include "winapi.hpp"
+#endif
 #include "uipriv_windows.hpp"
-
+#ifdef _MSC_VER
+#include <shellapi.h> 
+#endif
 #define windowClass L"libui_uiWindowClass"
 
 struct uiWindow {
